@@ -1,5 +1,6 @@
 {
-  "compilerOptions": {
-    "isolatedModules": true
-  }
+	"compilerOptions": {
+		"isolatedModules": true
+	},
+	"include": ["src/**/*"]
 }
