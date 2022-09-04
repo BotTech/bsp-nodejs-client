@@ -7,13 +7,20 @@
   "type": "module",
   "scripts": {
     "watch": "parcel watch",
-    "build": "parcel build"
+    "build": "parcel build",
+    "test": "jest",
+    "lint": "eslint",
+    "check": "tsc --noEmit",
+    "ci": "yarn check && yarn lint && yarn build && yarn test"
   },
   "devDependencies": {
     "@parcel/packager-ts": "2.7.0",
     "@parcel/transformer-typescript-types": "2.7.0",
     "@types/typescript": "^2.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.36.1",
+    "@typescript-eslint/parser": "^5.36.1",
+    "eslint": "^8.23.0",
     "parcel": "^2.7.0",
-    "typescript": "~4.7"
+    "typescript": "^4.8.2"
   }
 }
