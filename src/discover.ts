@@ -15,8 +15,16 @@ async function parseFile(
 	return fs.readFile(file, { encoding: 'utf-8' }).then((contents) => {
 		const result = parseBspConnectionDetails(contents);
 		if (result === undefined) {
-			console.warn(`Failed to parse BSP connection details from '${file}':`);
-			console.warn(parseBspConnectionDetails.message);
+			// TODO: Use a logger?
+			console.warn(
+				`Failed to parse BSP connection details from '${file}': ${parseBspConnectionDetails.message}`
+			);
+			console.warn(
+				'This must adhere to the JSON Type Definition in https://github.com/BotTech/bsp-nodejs-client/blob/main/src/schema/bsp-connection-details.jtd.json'
+			);
+			console.warn(
+				'If there is something going wrong or you want to ignore this warning then please raise an issue and provide the file.'
+			);
 		}
 		return result;
 	});
