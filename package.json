@@ -1,31 +1,31 @@
 {
 	"name": "bsp-nodejs-client",
 	"version": "0.0.1",
-	"source": "src/index.ts",
-	"main": "dist/main.js",
-	"types": "dist/types.d.ts",
+	"license": "MIT",
 	"type": "module",
+	"files": [
+		"dist"
+	],
+	"module": "dist/index.js",
 	"scripts": {
-		"build": "parcel build",
+		"build": "vite build",
 		"check": "run-p check:*",
 		"check:format": "prettier --check .",
 		"check:types": "tsc --noEmit",
 		"ci": "run-s check lint build test",
 		"format": "prettier --write .",
 		"lint": "eslint",
-		"test": "jest",
-		"watch": "parcel watch"
+		"test": "vitest"
 	},
 	"devDependencies": {
-		"@parcel/packager-ts": "2.7.0",
-		"@parcel/transformer-typescript-types": "2.7.0",
 		"@types/typescript": "^2.0.0",
 		"@typescript-eslint/eslint-plugin": "^5.36.1",
 		"@typescript-eslint/parser": "^5.36.1",
 		"eslint": "^8.23.0",
 		"npm-run-all": "^4.1.5",
-		"parcel": "^2.7.0",
 		"prettier": "2.7.1",
-		"typescript": "^4.8.2"
+		"typescript": "^4.8.2",
+		"vite": "^3.0.7",
+		"vitest": "^0.23.0"
 	}
 }

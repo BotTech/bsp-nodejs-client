@@ -1,1 +1,1 @@
-export const A = 123;
+export * from './discover';
