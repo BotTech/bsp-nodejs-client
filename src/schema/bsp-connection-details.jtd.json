@@ -1,0 +1,43 @@
+{
+	"metadata": {
+		"description": "Defines the BSP connection details."
+	},
+	"properties": {
+		"argv": {
+			"metadata": {
+				"description": "Command arguments runnable via system processes to start a BSP server."
+			},
+			"elements": {
+				"type": "string"
+			}
+		},
+		"bspVersion": {
+			"metadata": {
+				"description": "The BSP version of the build tool."
+			},
+			"type": "string"
+		},
+		"languages": {
+			"metadata": {
+				"description": "A collection of languages supported by this BSP server."
+			},
+			"elements": {
+				"type": "string"
+			}
+		},
+		"name": {
+			"metadata": {
+				"description": "The name of the build tool."
+			},
+			"type": "string"
+		},
+		"version": {
+			"metadata": {
+				"description": "The version of the build tool."
+			},
+			"type": "string"
+		}
+	},
+	"additionalProperties": true
+}
+

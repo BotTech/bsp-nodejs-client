@@ -2,7 +2,7 @@ import { BspConnectionDetails } from './bsp';
 import fs from 'fs/promises';
 import path from 'path';
 import Ajv from 'ajv/dist/jtd';
-import BspConnectionDetailsSchema from './schema/bsp-connection-details.json';
+import BspConnectionDetailsSchema from './schema/bsp-connection-details.jtd.json';
 
 const ajv = new Ajv();
 const parseBspConnectionDetails = ajv.compileParser<BspConnectionDetails>(
