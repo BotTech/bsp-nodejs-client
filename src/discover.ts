@@ -40,19 +40,100 @@ async function parseFiles(files: string[]): Promise<BspConnectionDetails[]> {
 	).then((x) => x.flat());
 }
 
-export async function discover(
-	workspace?: string
-): Promise<BspConnectionDetails[]> {
-	const baseDir = path.resolve(workspace ?? __dirname);
-	const bspDir = path.resolve(baseDir, '.bsp');
-	return fs.readdir(bspDir).then(
-		(files) => parseFiles(files.map((file) => path.resolve(bspDir, file))),
+async function searchBspDir(dir: string): Promise<BspConnectionDetails[]> {
+	return fs.readdir(dir).then(
+		(files) => parseFiles(files.map((file) => path.resolve(dir, file))),
 		(error) => {
 			if (error.code === 'ENOENT') {
-				const parentDir = path.dirname(baseDir);
-				return path.basename(parentDir) === '' ? [] : discover(parentDir);
+				return [];
 			}
 			throw error;
 		}
 	);
+}
+
+async function findWorkspaceConnectionDetails(
+	baseDir: string
+): Promise<BspConnectionDetails[]> {
+	const bspDir = path.resolve(baseDir, '.bsp');
+	const details = await searchBspDir(bspDir);
+	if (details.length > 0) {
+		return details;
+	}
+	// We didn't find any so try and search in parent directories in case the
+	// workspace is a subproject.
+	const parentDir = path.dirname(baseDir);
+	// TODO: Check that this works on Windows.
+	if (path.basename(parentDir) === '') {
+		return [];
+	}
+	return findWorkspaceConnectionDetails(parentDir);
+}
+
+function isNonEmpty(env?: string): env is string {
+	return env !== undefined && env !== '';
+}
+
+async function findUserConnectionDetails(): Promise<BspConnectionDetails[]> {
+	let userDirs = [];
+	if (process.platform === 'win32') {
+		const localAppDataDir = process.env.LOCALAPPDATA;
+		if (isNonEmpty(localAppDataDir)) {
+			userDirs.push(localAppDataDir);
+		}
+	} else {
+		// See https://specifications.freedesktop.org/basedir-spec/basedir-spec-0.6.html
+		const xdgDataHome = process.env.XDG_DATA_HOME;
+		const home = process.env.HOME;
+		if (isNonEmpty(xdgDataHome)) {
+			userDirs.push(xdgDataHome);
+		} else if (isNonEmpty(home)) {
+			userDirs.push(path.resolve(home, '.local/share'));
+			if (process.platform === 'darwin') {
+				userDirs.push(path.resolve(home, 'Library/Application Support'));
+			}
+		}
+	}
+	const bspDirs = userDirs.map((dir) => path.resolve(dir, 'bsp'));
+	return Promise.all(bspDirs.map(searchBspDir)).then((x) => x.flat());
+}
+
+async function findSystemConnectionDetails(): Promise<BspConnectionDetails[]> {
+	let systemDirs = [];
+	if (process.platform === 'win32') {
+		const programDataDir = process.env.PROGRAMDATA;
+		if (isNonEmpty(programDataDir)) {
+			systemDirs.push(programDataDir);
+		}
+	} else {
+		// See https://specifications.freedesktop.org/basedir-spec/basedir-spec-0.6.html
+		const xdgDataDirs = process.env.XDG_DATA_DIRS;
+		if (isNonEmpty(xdgDataDirs)) {
+			const dirs = xdgDataDirs.split(':').filter((x) => x !== '');
+			systemDirs.push(...dirs);
+		} else {
+			systemDirs.push('/usr/local/share', '/usr/share');
+		}
+		if (process.platform === 'darwin') {
+			systemDirs.push('/Library/Application Support');
+		}
+	}
+	const bspDirs = systemDirs.map((dir) => path.resolve(dir, 'bsp'));
+	return Promise.all(bspDirs.map(searchBspDir)).then((x) => x.flat());
+}
+
+// https://build-server-protocol.github.io/docs/server-discovery.html#default-locations-for-bsp-connection-files
+export async function discoverConnectionDetails(
+	workspace?: string
+): Promise<BspConnectionDetails[]> {
+	const workspaceDir = path.resolve(workspace ?? __dirname);
+	const workspaceDetails = await findWorkspaceConnectionDetails(workspaceDir);
+	if (workspaceDetails.length > 0) {
+		return workspaceDetails;
+	}
+	const userDetails = await findUserConnectionDetails();
+	if (userDetails.length > 0) {
+		return userDetails;
+	}
+	return findSystemConnectionDetails();
 }
