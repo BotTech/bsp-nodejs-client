@@ -1,4 +1,4 @@
-import { BspConnectionDetails } from '../bsp';
+import { BspConnectionDetails } from '../bsp'
 
 const connectionDetails: BspConnectionDetails = {
 	name: 'sbt',
@@ -13,8 +13,8 @@ const connectionDetails: BspConnectionDetails = {
 		'/share/sbt/bin/sbt-launch.jar',
 		'-Dsbt.script=/bin/sbt',
 		'xsbt.boot.Boot',
-		'-bsp',
-	],
-};
+		'-bsp'
+	]
+}
 
-export default connectionDetails;
+export default connectionDetails

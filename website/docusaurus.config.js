@@ -1,8 +1,8 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require('prism-react-renderer/themes/github');
-const darkCodeTheme = require('prism-react-renderer/themes/dracula');
+const lightCodeTheme = require('prism-react-renderer/themes/github')
+const darkCodeTheme = require('prism-react-renderer/themes/dracula')
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -23,7 +23,7 @@ const config = {
 	// to replace "en" with "zh-Hans".
 	i18n: {
 		defaultLocale: 'en',
-		locales: ['en'],
+		locales: ['en']
 	},
 
 	presets: [
@@ -37,14 +37,14 @@ const config = {
 					// Please change this to your repo.
 					// Remove this to remove the "edit this page" links.
 					editUrl:
-						'https://github.com/BotTech/bsp-nodejs-client/tree/main/website/',
+						'https://github.com/BotTech/bsp-nodejs-client/tree/main/website/'
 				},
 				blog: false,
 				theme: {
-					customCss: require.resolve('./src/css/custom.css'),
-				},
-			}),
-		],
+					customCss: require.resolve('./src/css/custom.css')
+				}
+			})
+		]
 	],
 
 	themeConfig:
@@ -61,14 +61,14 @@ const config = {
 						type: 'doc',
 						docId: 'intro',
 						position: 'left',
-						label: 'Docs',
+						label: 'Docs'
 					},
 					{
 						href: 'https://github.com/BotTech/bsp-nodejs-client',
 						label: 'GitHub',
-						position: 'right',
-					},
-				],
+						position: 'right'
+					}
+				]
 			},
 			footer: {
 				style: 'dark',
@@ -78,40 +78,40 @@ const config = {
 						items: [
 							{
 								label: 'Get Started',
-								to: '/intro',
-							},
-						],
+								to: '/intro'
+							}
+						]
 					},
 					{
 						title: 'Community',
 						items: [
 							{
 								label: 'Issues',
-								href: 'https://github.com/BotTech/bsp-nodejs-client/issues',
+								href: 'https://github.com/BotTech/bsp-nodejs-client/issues'
 							},
 							{
 								label: 'Discussions',
-								href: 'https://github.com/BotTech/bsp-nodejs-client/discussions',
-							},
-						],
+								href: 'https://github.com/BotTech/bsp-nodejs-client/discussions'
+							}
+						]
 					},
 					{
 						title: 'More',
 						items: [
 							{
 								label: 'GitHub',
-								href: 'https://github.com/BotTech/bsp-nodejs-client',
-							},
-						],
-					},
+								href: 'https://github.com/BotTech/bsp-nodejs-client'
+							}
+						]
+					}
 				],
-				copyright: `Copyright © ${new Date().getFullYear()} BotTech, Ltd. Built with Docusaurus.`,
+				copyright: `Copyright © ${new Date().getFullYear()} BotTech, Ltd. Built with Docusaurus.`
 			},
 			prism: {
 				theme: lightCodeTheme,
-				darkTheme: darkCodeTheme,
-			},
-		}),
-};
+				darkTheme: darkCodeTheme
+			}
+		})
+}
 
-module.exports = config;
+module.exports = config
