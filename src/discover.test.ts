@@ -1,14 +1,15 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import processActual from 'process'
-type Process = typeof processActual
-
 import path from 'path'
 
 import { NestedDirectoryJSON } from '@bottech/memfs/lib/types/volume'
 
 import sampleConnectionDetails from './test-data/connection-details'
 import { BspConnectionDetails } from './bsp'
+
+type Process = typeof processActual
+
 function generateConnectionDetails() {
 	return { ...sampleConnectionDetails, random: Math.random() }
 }
@@ -46,6 +47,8 @@ function mockFs(json: NestedDirectoryJSON) {
 	vi.doMock('fs/promises', async () => {
 		// NOTE: Inline this dependency in vitest config otherwise transitive dependencies will not work.
 		const { Volume } = await import('@bottech/memfs')
+		// FIXME: How do we get it to find these types?
+		// @ts-ignore
 		const createPromisesApi = (await import('@bottech/memfs/promises')).default
 		return {
 			default: createPromisesApi(Volume.fromNestedJSON(json))

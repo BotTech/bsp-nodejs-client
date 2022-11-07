@@ -7,7 +7,7 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@bottech/memfs@^3.4.7-beta.2":
+"@bottech/memfs@^3.4.7-beta.16":
   version "3.4.7-beta.16"
   resolved "https://npm.pkg.github.com/download/@bottech/memfs/3.4.7-beta.16/4e48c814da4b898c851cf8338843b43ed1f2f333#4e48c814da4b898c851cf8338843b43ed1f2f333"
   integrity sha512-J/d2zz+LAuQz7dERu7qgBPCT8ItYbFvUHvGAVWaqhpQynFICrNdt9cMwBJgYix/lvCwaEPENPxjp+e9b3Zs4eQ==
