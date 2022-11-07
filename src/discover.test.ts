@@ -1,22 +1,57 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import processActual from 'process'
+type Process = typeof processActual
 
-import createPromisesApi from 'memfs/lib/promises'
-import { NestedDirectoryJSON } from 'memfs/lib/volume'
-import { DirectoryJSON, Volume } from 'memfs'
+import path from 'path'
 
-import connectionDetails from './test-data/connection-details'
-const connectionDetailsString = JSON.stringify(connectionDetails)
-const bspDir: DirectoryJSON = {
-	'sbt.json': connectionDetailsString
+import { NestedDirectoryJSON } from '@bottech/memfs/lib/types/volume'
+
+import sampleConnectionDetails from './test-data/connection-details'
+import { BspConnectionDetails } from './bsp'
+function generateConnectionDetails() {
+	return { ...sampleConnectionDetails, random: Math.random() }
 }
 
-vi.mock('fs/promises', () => {
+function bspDir(details: BspConnectionDetails) {
 	return {
-		default: createPromisesApi(Volume.fromNestedJSON({}))
+		'sbt.json': JSON.stringify(details)
 	}
-})
+}
+
+function mockProcess(mock: Partial<Process>) {
+	vi.doMock('process', async () => {
+		const actual = await vi.importActual<Process>('process')
+		return {
+			default: {
+				...actual,
+				...mock
+			} as Process
+		}
+	})
+}
+
+function mockPath(platformPath: typeof path) {
+	vi.doMock('path', () => {
+		return {
+			...platformPath,
+			default: platformPath
+		}
+	})
+}
+
+function mockFs(json: NestedDirectoryJSON) {
+	// We need to do this as a dynamic import so that it picks up things from
+	// other mocks such as the platform.
+	vi.doMock('fs/promises', async () => {
+		// NOTE: Inline this dependency in vitest config otherwise transitive dependencies will not work.
+		const { Volume } = await import('@bottech/memfs')
+		const createPromisesApi = (await import('@bottech/memfs/promises')).default
+		return {
+			default: createPromisesApi(Volume.fromNestedJSON(json))
+		}
+	})
+}
 
 describe('discoverConnectionDetails', () => {
 	beforeEach(() => {
@@ -32,13 +67,10 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	it('finds connection details in working directory', async () => {
-		vi.doMock('fs/promises', () => {
-			const json: NestedDirectoryJSON = {}
-			json[__dirname] = {
-				'.bsp': bspDir
-			}
-			return {
-				default: createPromisesApi(Volume.fromNestedJSON(json))
+		const connectionDetails = generateConnectionDetails()
+		mockFs({
+			[__dirname]: {
+				'.bsp': bspDir(connectionDetails)
 			}
 		})
 		const { discoverConnectionDetails } = await import('./discover')
@@ -49,15 +81,10 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	it('finds connection details in workspace', async () => {
-		vi.doMock('fs/promises', () => {
-			return {
-				default: createPromisesApi(
-					Volume.fromNestedJSON({
-						'/workspace': {
-							'.bsp': bspDir
-						}
-					})
-				)
+		const connectionDetails = generateConnectionDetails()
+		mockFs({
+			'/workspace': {
+				'.bsp': bspDir(connectionDetails)
 			}
 		})
 		const { discoverConnectionDetails } = await import('./discover')
@@ -68,16 +95,11 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	it('finds connection details in parent workspace', async () => {
-		vi.doMock('fs/promises', () => {
-			return {
-				default: createPromisesApi(
-					Volume.fromNestedJSON({
-						'/parent': {
-							'.bsp': bspDir,
-							workspace: {}
-						}
-					})
-				)
+		const connectionDetails = generateConnectionDetails()
+		mockFs({
+			'/parent': {
+				'.bsp': bspDir(connectionDetails),
+				workspace: {}
 			}
 		})
 		const { discoverConnectionDetails } = await import('./discover')
@@ -88,6 +110,7 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	it('finds nothing in an empty workspace', async () => {
+		mockFs({})
 		const { discoverConnectionDetails } = await import('./discover')
 
 		const result = await discoverConnectionDetails('/empty')
@@ -96,6 +119,7 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	it('finds nothing in a missing workspace', async () => {
+		mockFs({})
 		const { discoverConnectionDetails } = await import('./discover')
 
 		const result = await discoverConnectionDetails('/missing')
@@ -104,17 +128,11 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	it('finds nothing if workspace details are invalid', async () => {
-		vi.doMock('fs/promises', () => {
-			return {
-				default: createPromisesApi(
-					Volume.fromNestedJSON({
-						'/workspace': {
-							'.bsp': {
-								borked: '{}'
-							}
-						}
-					})
-				)
+		mockFs({
+			'/workspace': {
+				'.bsp': {
+					borked: '{}'
+				}
 			}
 		})
 		const { discoverConnectionDetails } = await import('./discover')
@@ -125,23 +143,274 @@ describe('discoverConnectionDetails', () => {
 		expect(result).to.be.empty
 	})
 
-	it('finds connection details in local app data on Windows', async () => {
-		vi.doMock('process', async () => {
-			const actual = await vi.importActual<typeof processActual>('process')
-			return {
-				default: {
-					...actual,
-					platform: 'win32',
-					env: {
-						LOCALAPPDATA: 'todo'
-					}
-				} as typeof processActual
-			}
+	describe('win32', () => {
+		beforeAll(() => {
+			mockProcess({ platform: 'win32' })
+			mockPath(path.win32)
 		})
-		const { discoverConnectionDetails } = await import('./discover')
 
-		const result = await discoverConnectionDetails('/invalid')
+		afterAll(() => {
+			// Anything mocked with doMock seems to also need to be explicitly unmocked.
+			vi.doUnmock('path')
+		})
 
-		expect(result).to.be.empty
+		it('finds connection details in LOCALAPPDATA on Windows', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'win32',
+				env: {
+					LOCALAPPDATA: 'C:\\Users\\jason\\AppData\\Local'
+				}
+			})
+			mockFs({
+				'/Users': {
+					jason: {
+						AppData: {
+							Local: {
+								bsp: bspDir(connectionDetails)
+							}
+						}
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in PROGRAMDATA on Windows', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'win32',
+				env: {
+					PROGRAMDATA: 'C:\\ProgramData'
+				}
+			})
+			mockFs({
+				'/ProgramData': {
+					bsp: bspDir(connectionDetails)
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+	})
+
+	describe('darwin', () => {
+		beforeAll(() => {
+			mockProcess({ platform: 'darwin' })
+			mockPath(path.posix)
+		})
+
+		afterAll(() => {
+			// Anything mocked with doMock seems to also need to be explicitly unmocked.
+			vi.doUnmock('path')
+		})
+
+		it('finds connection details in XDG_DATA_HOME on Mac', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'darwin',
+				env: {
+					XDG_DATA_HOME: '/Users/jason/Library'
+				}
+			})
+			mockFs({
+				'/Users': {
+					jason: {
+						Library: {
+							bsp: bspDir(connectionDetails)
+						}
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in $HOME/.local/share on Mac', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'darwin',
+				env: {
+					HOME: '/Users/jason'
+				}
+			})
+			mockFs({
+				'/Users': {
+					jason: {
+						'.local': {
+							share: {
+								bsp: bspDir(connectionDetails)
+							}
+						}
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in $HOME/Library/Application Support on Mac', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'darwin',
+				env: {
+					HOME: '/Users/jason'
+				}
+			})
+			mockFs({
+				'/Users': {
+					jason: {
+						Library: {
+							'Application Support': {
+								bsp: bspDir(connectionDetails)
+							}
+						}
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in XDG_DATA_DIRS on Mac', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'darwin',
+				env: {
+					XDG_DATA_DIRS: '/usr/share:/Volumes/data'
+				}
+			})
+			mockFs({
+				'/Volumes': {
+					data: {
+						bsp: bspDir(connectionDetails)
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in /Library/Application Support on Mac', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'darwin'
+			})
+			mockFs({
+				'/Library': {
+					'Application Support': {
+						bsp: bspDir(connectionDetails)
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+	})
+
+	describe('linux', () => {
+		beforeAll(() => {
+			mockProcess({ platform: 'linux' })
+			mockPath(path.posix)
+		})
+
+		afterAll(() => {
+			// Anything mocked with doMock seems to also need to be explicitly unmocked.
+			vi.doUnmock('path')
+		})
+
+		it('finds connection details in XDG_DATA_HOME on Linux', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'linux',
+				env: {
+					XDG_DATA_HOME: '/home/jason/data'
+				}
+			})
+			mockFs({
+				'/home': {
+					jason: {
+						data: {
+							bsp: bspDir(connectionDetails)
+						}
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in $HOME/.local/share on Linux', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'linux',
+				env: {
+					HOME: '/home/jason'
+				}
+			})
+			mockFs({
+				'/home': {
+					jason: {
+						'.local': {
+							share: {
+								bsp: bspDir(connectionDetails)
+							}
+						}
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
+
+		it('finds connection details in XDG_DATA_DIRS on Linux', async () => {
+			const connectionDetails = generateConnectionDetails()
+			mockProcess({
+				platform: 'linux',
+				env: {
+					XDG_DATA_DIRS: '/usr/share:/media/data'
+				}
+			})
+			mockFs({
+				'/media': {
+					data: {
+						bsp: bspDir(connectionDetails)
+					}
+				}
+			})
+			const { discoverConnectionDetails } = await import('./discover')
+
+			const result = await discoverConnectionDetails()
+
+			expect(result).toStrictEqual([connectionDetails])
+		})
 	})
 })

@@ -10,9 +10,7 @@ const parseBspConnectionDetails = ajv.compileParser<BspConnectionDetails>(
 	BspConnectionDetailsSchema
 )
 
-async function parseFile(
-	file: string
-): Promise<BspConnectionDetails | undefined> {
+async function parseFile(file: string): Promise<BspConnectionDetails | undefined> {
 	return fs.readFile(file, { encoding: 'utf-8' }).then((contents) => {
 		const result = parseBspConnectionDetails(contents)
 		if (result === undefined) {
@@ -34,11 +32,9 @@ async function parseFile(
 async function parseFiles(files: string[]): Promise<BspConnectionDetails[]> {
 	return Promise.all(
 		files.flatMap((file) =>
-			parseFile(file).then((details) =>
-				details === undefined ? [] : [details]
-			)
+			parseFile(file).then((details) => (details === undefined ? [] : [details]))
 		)
-	).then((x) => x.flat())
+	).then((details) => details.flat())
 }
 
 async function searchBspDir(dir: string): Promise<BspConnectionDetails[]> {
@@ -53,7 +49,7 @@ async function searchBspDir(dir: string): Promise<BspConnectionDetails[]> {
 	)
 }
 
-async function findWorkspaceConnectionDetails(
+async function discoverWorkspaceConnectionDetails(
 	baseDir: string
 ): Promise<BspConnectionDetails[]> {
 	const bspDir = path.resolve(baseDir, '.bsp')
@@ -68,14 +64,14 @@ async function findWorkspaceConnectionDetails(
 	if (path.basename(parentDir) === '') {
 		return []
 	}
-	return findWorkspaceConnectionDetails(parentDir)
+	return discoverWorkspaceConnectionDetails(parentDir)
 }
 
 function isNonEmpty(env?: string): env is string {
 	return env !== undefined && env !== ''
 }
 
-async function findUserConnectionDetails(): Promise<BspConnectionDetails[]> {
+async function discoverUserConnectionDetails(): Promise<BspConnectionDetails[]> {
 	let userDirs = []
 	if (process.platform === 'win32') {
 		const localAppDataDir = process.env.LOCALAPPDATA
@@ -99,7 +95,7 @@ async function findUserConnectionDetails(): Promise<BspConnectionDetails[]> {
 	return Promise.all(bspDirs.map(searchBspDir)).then((x) => x.flat())
 }
 
-async function findSystemConnectionDetails(): Promise<BspConnectionDetails[]> {
+async function discoverSystemConnectionDetails(): Promise<BspConnectionDetails[]> {
 	let systemDirs = []
 	if (process.platform === 'win32') {
 		const programDataDir = process.env.PROGRAMDATA
@@ -128,13 +124,13 @@ export async function discoverConnectionDetails(
 	workspace?: string
 ): Promise<BspConnectionDetails[]> {
 	const workspaceDir = path.resolve(workspace ?? __dirname)
-	const workspaceDetails = await findWorkspaceConnectionDetails(workspaceDir)
+	const workspaceDetails = await discoverWorkspaceConnectionDetails(workspaceDir)
 	if (workspaceDetails.length > 0) {
 		return workspaceDetails
 	}
-	const userDetails = await findUserConnectionDetails()
+	const userDetails = await discoverUserConnectionDetails()
 	if (userDetails.length > 0) {
 		return userDetails
 	}
-	return findSystemConnectionDetails()
+	return discoverSystemConnectionDetails()
 }
