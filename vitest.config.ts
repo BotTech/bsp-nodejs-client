@@ -6,9 +6,8 @@ export default defineConfig({
 	test: {
 		deps: {
 			inline: ['@bottech/memfs']
-		},
+		}
 		// Disable when debugging. Can we do this via a CLI option?
-		// TODO: Comment out
-		testTimeout: 0
+		//testTimeout: 0
 	}
 })

@@ -4,6 +4,10 @@ import path from 'path'
 import Ajv from 'ajv/dist/jtd'
 import BspConnectionDetailsSchema from './schema/bsp-connection-details.jtd.json'
 import process from 'process'
+import pino from 'pino'
+import { stripLeading as sl } from './strings'
+
+const logger = pino({ name: 'discover' })
 
 const ajv = new Ajv()
 const parseBspConnectionDetails = ajv.compileParser<BspConnectionDetails>(
@@ -14,16 +18,14 @@ async function parseFile(file: string): Promise<BspConnectionDetails | undefined
 	return fs.readFile(file, { encoding: 'utf-8' }).then((contents) => {
 		const result = parseBspConnectionDetails(contents)
 		if (result === undefined) {
-			// TODO: Use a logger?
-			console.warn(
-				`Failed to parse BSP connection details from '${file}': ${parseBspConnectionDetails.message}`
+			logger.warn(
+				{ file },
+				sl`Failed to parse BSP connection details: %s
+				   This must adhere to the JSON Type Definition in https://github.com/BotTech/bsp-nodejs-client/blob/main/src/schema/bsp-connection-details.jtd.json.`,
+				parseBspConnectionDetails.message
 			)
-			console.warn(
-				'This must adhere to the JSON Type Definition in https://github.com/BotTech/bsp-nodejs-client/blob/main/src/schema/bsp-connection-details.jtd.json'
-			)
-			console.warn(
-				'If there is something going wrong or you want to ignore this warning then please raise an issue and provide the file.'
-			)
+		} else {
+			logger.debug({ file, result }, 'Parsed BSP connection details.')
 		}
 		return result
 	})
@@ -38,6 +40,7 @@ async function parseFiles(files: string[]): Promise<BspConnectionDetails[]> {
 }
 
 async function searchBspDir(dir: string): Promise<BspConnectionDetails[]> {
+	logger.debug({ dir }, `Searching for BSP connection details`)
 	return fs.readdir(dir).then(
 		(files) => parseFiles(files.map((file) => path.resolve(dir, file))),
 		(error) => {
@@ -77,6 +80,8 @@ async function discoverUserConnectionDetails(): Promise<BspConnectionDetails[]> 
 		const localAppDataDir = process.env.LOCALAPPDATA
 		if (isNonEmpty(localAppDataDir)) {
 			userDirs.push(localAppDataDir)
+		} else {
+			logger.debug('LOCALAPPDATA is not set or is empty.')
 		}
 	} else {
 		// See https://specifications.freedesktop.org/basedir-spec/basedir-spec-0.6.html
@@ -84,10 +89,15 @@ async function discoverUserConnectionDetails(): Promise<BspConnectionDetails[]> 
 		const home = process.env.HOME
 		if (isNonEmpty(xdgDataHome)) {
 			userDirs.push(xdgDataHome)
-		} else if (isNonEmpty(home)) {
-			userDirs.push(path.resolve(home, '.local/share'))
-			if (process.platform === 'darwin') {
-				userDirs.push(path.resolve(home, 'Library/Application Support'))
+		} else {
+			logger.debug('XDG_DATA_HOME is not set or is empty.')
+			if (isNonEmpty(home)) {
+				userDirs.push(path.resolve(home, '.local/share'))
+				if (process.platform === 'darwin') {
+					userDirs.push(path.resolve(home, 'Library/Application Support'))
+				}
+			} else {
+				logger.debug('HOME is not set or is empty.')
 			}
 		}
 	}
@@ -101,6 +111,8 @@ async function discoverSystemConnectionDetails(): Promise<BspConnectionDetails[]
 		const programDataDir = process.env.PROGRAMDATA
 		if (isNonEmpty(programDataDir)) {
 			systemDirs.push(programDataDir)
+		} else {
+			logger.debug('PROGRAMDATA is not set or is empty.')
 		}
 	} else {
 		// See https://specifications.freedesktop.org/basedir-spec/basedir-spec-0.6.html
@@ -109,6 +121,7 @@ async function discoverSystemConnectionDetails(): Promise<BspConnectionDetails[]
 			const dirs = xdgDataDirs.split(':').filter((x) => x !== '')
 			systemDirs.push(...dirs)
 		} else {
+			logger.debug('XDG_DATA_DIRS is not set or is empty.')
 			systemDirs.push('/usr/local/share', '/usr/share')
 		}
 		if (process.platform === 'darwin') {

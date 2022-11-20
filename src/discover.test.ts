@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import processActual from 'process'
 import path from 'path'
@@ -20,8 +20,12 @@ function bspDir(details: BspConnectionDetails) {
 	}
 }
 
+// Make sure to prefix this with node: otherwise vitest thinks we are trying to mock the external
+// process module.
+const PROCESS_PATH = 'node:process'
+
 function mockProcess(mock: Partial<Process>) {
-	vi.doMock('process', async () => {
+	vi.doMock(PROCESS_PATH, async () => {
 		const actual = await vi.importActual<Process>('process')
 		return {
 			default: {
@@ -32,8 +36,10 @@ function mockProcess(mock: Partial<Process>) {
 	})
 }
 
+const PATH_PATH = 'path'
+
 function mockPath(platformPath: typeof path) {
-	vi.doMock('path', () => {
+	vi.doMock(PATH_PATH, () => {
 		return {
 			...platformPath,
 			default: platformPath
@@ -41,10 +47,12 @@ function mockPath(platformPath: typeof path) {
 	})
 }
 
+const FS_PROMISES_PATH = 'fs/promises'
+
 function mockFs(json: NestedDirectoryJSON) {
 	// We need to do this as a dynamic import so that it picks up things from
 	// other mocks such as the platform.
-	vi.doMock('fs/promises', async () => {
+	vi.doMock(FS_PROMISES_PATH, async () => {
 		// NOTE: Inline this dependency in vitest config otherwise transitive dependencies will not work.
 		const { Volume } = await import('@bottech/memfs')
 		// FIXME: How do we get it to find these types?
@@ -65,8 +73,9 @@ describe('discoverConnectionDetails', () => {
 
 	afterEach(() => {
 		// Anything mocked with doMock seems to also need to be explicitly unmocked.
-		vi.doUnmock('fs/promises')
-		vi.doUnmock('process')
+		vi.doUnmock(PROCESS_PATH)
+		vi.doUnmock(PATH_PATH)
+		vi.doUnmock(FS_PROMISES_PATH)
 	})
 
 	it('finds connection details in working directory', async () => {
@@ -147,14 +156,9 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	describe('win32', () => {
-		beforeAll(() => {
+		beforeEach(() => {
 			mockProcess({ platform: 'win32' })
 			mockPath(path.win32)
-		})
-
-		afterAll(() => {
-			// Anything mocked with doMock seems to also need to be explicitly unmocked.
-			vi.doUnmock('path')
 		})
 
 		it('finds connection details in LOCALAPPDATA on Windows', async () => {
@@ -205,14 +209,9 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	describe('darwin', () => {
-		beforeAll(() => {
+		beforeEach(() => {
 			mockProcess({ platform: 'darwin' })
 			mockPath(path.posix)
-		})
-
-		afterAll(() => {
-			// Anything mocked with doMock seems to also need to be explicitly unmocked.
-			vi.doUnmock('path')
 		})
 
 		it('finds connection details in XDG_DATA_HOME on Mac', async () => {
@@ -334,14 +333,9 @@ describe('discoverConnectionDetails', () => {
 	})
 
 	describe('linux', () => {
-		beforeAll(() => {
+		beforeEach(() => {
 			mockProcess({ platform: 'linux' })
 			mockPath(path.posix)
-		})
-
-		afterAll(() => {
-			// Anything mocked with doMock seems to also need to be explicitly unmocked.
-			vi.doUnmock('path')
 		})
 
 		it('finds connection details in XDG_DATA_HOME on Linux', async () => {
