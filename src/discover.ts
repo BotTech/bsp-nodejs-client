@@ -4,7 +4,7 @@ import path from 'path'
 import Ajv from 'ajv/dist/jtd'
 import BspConnectionDetailsSchema from './schema/bsp-connection-details.jtd.json'
 import process from 'process'
-import pino from 'pino'
+import { pino } from 'pino'
 import { stripLeading as sl } from './strings'
 
 const logger = pino({ name: 'discover' })

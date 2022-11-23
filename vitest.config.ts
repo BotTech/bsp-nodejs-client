@@ -6,7 +6,8 @@ export default defineConfig({
 	test: {
 		deps: {
 			inline: ['@bottech/memfs']
-		}
+		},
+		mockReset: true
 		// Disable when debugging. Can we do this via a CLI option?
 		//testTimeout: 0
 	}

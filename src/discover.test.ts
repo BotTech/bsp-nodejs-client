@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import processActual from 'process'
 import path from 'path'
@@ -7,6 +7,8 @@ import { NestedDirectoryJSON } from '@bottech/memfs/lib/types/volume'
 
 import sampleConnectionDetails from './test-data/connection-details'
 import { BspConnectionDetails } from './bsp'
+import { Logger, pino } from 'pino'
+import { stripLeading as sl } from './strings'
 
 type Process = typeof processActual
 
@@ -64,6 +66,18 @@ function mockFs(json: NestedDirectoryJSON) {
 	})
 }
 
+const PINO_PATH = 'pino'
+
+function mockLogger(): Logger {
+	const logger = pino({ name: 'discover' })
+	vi.doMock(PINO_PATH, async () => {
+		return {
+			pino: () => logger
+		}
+	})
+	return logger
+}
+
 describe('discoverConnectionDetails', () => {
 	beforeEach(() => {
 		// We have to use dynamic imports and reset the module between each test
@@ -76,6 +90,7 @@ describe('discoverConnectionDetails', () => {
 		vi.doUnmock(PROCESS_PATH)
 		vi.doUnmock(PATH_PATH)
 		vi.doUnmock(FS_PROMISES_PATH)
+		vi.doUnmock(PINO_PATH)
 	})
 
 	it('finds connection details in working directory', async () => {
@@ -139,20 +154,30 @@ describe('discoverConnectionDetails', () => {
 		expect(result).to.be.empty
 	})
 
-	it('finds nothing if workspace details are invalid', async () => {
+	it.only('finds nothing if workspace details are invalid', async () => {
 		mockFs({
-			'/workspace': {
+			'/invalid': {
 				'.bsp': {
 					borked: '{}'
 				}
 			}
 		})
+
+		const logger = mockLogger()
+		const spy = vi.spyOn(logger, 'warn')
+
 		const { discoverConnectionDetails } = await import('./discover')
 
 		const result = await discoverConnectionDetails('/invalid')
 
-		// TODO: Assert that there is some kind of warning here.
 		expect(result).to.be.empty
+		expect(spy).toHaveBeenCalledOnce()
+		expect(spy).toHaveBeenCalledWith(
+			{ file: '/invalid/.bsp/borked' },
+			sl`Failed to parse BSP connection details: %s
+				 This must adhere to the JSON Type Definition in https://github.com/BotTech/bsp-nodejs-client/blob/main/src/schema/bsp-connection-details.jtd.json.`,
+			'missing required properties'
+		)
 	})
 
 	describe('win32', () => {
