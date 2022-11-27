@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import fc, { Arbitrary } from 'fast-check'
+import fc from 'fast-check'
 import { constantFromOrElse } from './constantFromOrElse'
-
-function forkChain<A, B>(arbA: Arbitrary<A>, chainer: (a: A) => Arbitrary<B>): Arbitrary<[A, B]> {
-	return arbA.chain((a) => chainer(a).map((b) => [a, b]))
-}
+import { forkChain } from './forkChain'
 
 describe('constantFromOrElse', () => {
 	it('uses orElse when values is empty', () => {

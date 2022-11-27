@@ -18,7 +18,34 @@ const stringWithSpecials: Arbitrary<[string, string[]]> = fc
 			.map((s) => [s, specials])
 	)
 
-function expectToBeEscaped(s: string, specials: string[]) {
+function expectToBeOriginalEscaped(s: string, specials: string[]) {
+	const escapeIsSpecial = specials.includes(Escape)
+	const escaped = escapeUnescaped(s, specials)
+	const originalCodePoints = Array.from(s)
+	const escapedCodePoints = Array.from(escaped)
+	let escapedIndex = 0
+	let originalIndex = 0
+	while (escapedIndex < escapedCodePoints.length && originalIndex < originalCodePoints.length) {
+		const escapedCodePoint = escapedCodePoints[escapedIndex]
+		const originalCodePoint = originalCodePoints[originalIndex]
+		if (escapedCodePoint === originalCodePoint) {
+			originalIndex++
+			escapedIndex++
+		} else {
+			expect(escapedCodePoint).toBe('\\')
+			expect(specials).toContain(originalCodePoint)
+			escapedIndex++
+		}
+	}
+	if (escapeIsSpecial && escapedIndex === escapedCodePoints.length - 1) {
+		expect(escapedCodePoints[escapedIndex] === Escape)
+	} else {
+		expect(escapedIndex).toBe(escapedCodePoints.length)
+	}
+	expect(originalIndex).toBe(originalCodePoints.length)
+}
+
+function expectSpecialsToBeEscaped(s: string, specials: string[]) {
 	const escapeIsSpecial = specials.includes(Escape)
 	const escaped = escapeUnescaped(s, specials)
 	const escapedCodePoints = Array.from(escaped)
@@ -47,44 +74,26 @@ function expectToBeEscaped(s: string, specials: string[]) {
 }
 
 describe('escapeUnescaped', () => {
-	it('only adds escape characters before code points to be escaped', () => {
+	it('only adds escape characters before backslash', () => {
+		expectToBeOriginalEscaped('\\', ['\\'])
+	})
+	it('only adds escape characters before specials', () => {
 		fc.assert(
 			fc.property(stringWithSpecials, ([s, specials]) => {
-				const escaped = escapeUnescaped(s, specials)
-				const originalCodePoints = Array.from(s)
-				const escapedCodePoints = Array.from(escaped)
-				let escapedIndex = 0
-				let originalIndex = 0
-				while (
-					escapedIndex < escapedCodePoints.length &&
-					originalIndex < originalCodePoints.length
-				) {
-					const escapedCodePoint = escapedCodePoints[escapedIndex]
-					const originalCodePoint = originalCodePoints[originalIndex]
-					if (escapedCodePoint === originalCodePoint) {
-						originalIndex++
-						escapedIndex++
-					} else {
-						expect(escapedCodePoint).toBe('\\')
-						expect(specials).toContain(originalCodePoint)
-						escapedIndex++
-					}
-				}
-				expect(escapedIndex).toBe(escapedCodePoints.length)
-				expect(originalIndex).toBe(originalCodePoints.length)
+				expectToBeOriginalEscaped(s, specials)
 			})
 		)
 	})
 	it('single backslash is escaped', () => {
-		expectToBeEscaped('\\', ['\\'])
+		expectSpecialsToBeEscaped('\\', ['\\'])
 	})
 	it('leading backslash is escaped', () => {
-		expectToBeEscaped('\\a', ['\\'])
+		expectSpecialsToBeEscaped('\\a', ['\\'])
 	})
 	it('every code point is escaped', () => {
 		fc.assert(
 			fc.property(stringWithSpecials, ([s, specials]) => {
-				expectToBeEscaped(s, specials)
+				expectSpecialsToBeEscaped(s, specials)
 			})
 		)
 	})
