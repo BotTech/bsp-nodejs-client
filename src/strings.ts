@@ -6,6 +6,7 @@ export function stripLeading(
 	strings: TemplateStringsArray,
 	...values: InterpolatableValue[]
 ): string {
+	// TODO: Use String.raw({raw: strings.map(...)}, ...values)?
 	return strings
 		.flatMap((value, index) => {
 			let replaced = value.replaceAll(leadingWhitespace, '')

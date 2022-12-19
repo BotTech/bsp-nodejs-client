@@ -154,7 +154,7 @@ describe('discoverConnectionDetails', () => {
 		expect(result).to.be.empty
 	})
 
-	it.only('finds nothing if workspace details are invalid', async () => {
+	it('finds nothing if workspace details are invalid', async () => {
 		mockFs({
 			'/invalid': {
 				'.bsp': {
