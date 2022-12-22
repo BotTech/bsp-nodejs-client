@@ -209,7 +209,7 @@ describe('escapeUnescaped', () => {
 		expectSpecialsToBeEscaped(escaped, specials)
 		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
 	})
-	it('every code point is escaped', () => {
+	it.skipIf(process.env.PROPERTY_BASED_TESTS === 'off')('every code point is escaped', () => {
 		fc.assert(
 			fc.property(stringWithSpecials, ([s, specials]) => {
 				const escaped = escapeUnescaped(s, specials)
@@ -217,23 +217,29 @@ describe('escapeUnescaped', () => {
 			})
 		)
 	})
-	it('only adds escape characters before specials', () => {
-		fc.assert(
-			fc.property(stringWithSpecials, ([original, specials]) => {
-				const escaped = escapeUnescaped(original, specials)
-				expectToBeOriginalWithAddedEscapes(original, escaped, specials)
-			})
-		)
-	})
-	it('escaping something once is the same as twice', () => {
-		fc.assert(
-			fc.property(stringWithSpecials, ([original, specials]) => {
-				const once = escapeUnescaped(original, specials)
-				const twice = escapeUnescaped(once, specials)
-				return once === twice
-			})
-		)
-	})
+	it.skipIf(process.env.PROPERTY_BASED_TESTS === 'off')(
+		'only adds escape characters before specials',
+		() => {
+			fc.assert(
+				fc.property(stringWithSpecials, ([original, specials]) => {
+					const escaped = escapeUnescaped(original, specials)
+					expectToBeOriginalWithAddedEscapes(original, escaped, specials)
+				})
+			)
+		}
+	)
+	it.skipIf(process.env.PROPERTY_BASED_TESTS === 'off')(
+		'escaping something once is the same as twice',
+		() => {
+			fc.assert(
+				fc.property(stringWithSpecials, ([original, specials]) => {
+					const once = escapeUnescaped(original, specials)
+					const twice = escapeUnescaped(once, specials)
+					return once === twice
+				})
+			)
+		}
+	)
 })
 
 // TODO: Can we get away without duplicating this?
@@ -384,7 +390,8 @@ describe('replaceEscapes', () => {
 			name: 'isolated low surrogate is replaced',
 			original: '\\u{d8}\\udca9',
 			expected: '\u{d8}\udca9'
-		}
+		},
+		{ name: 'hex escape is replaced', original: '\\x00', expected: '\x00' }
 	])('$name', ({ original, expected }) => {
 		const replaced = replaceEscapes(original)
 		expect(replaced).toBe(expected)
@@ -397,7 +404,7 @@ describe('replaceEscapes', () => {
 	])('invalid $name escape throws SyntaxError', ({ original, message }) => {
 		expect(() => replaceEscapes(original)).toThrowError(new SyntaxError(message))
 	})
-	it('replaces every escape', () => {
+	it.skipIf(process.env.PROPERTY_BASED_TESTS === 'off')('replaces every escape', () => {
 		fc.assert(
 			fc.property(escapedString, (original) => {
 				const replaced = replaceEscapes(original)

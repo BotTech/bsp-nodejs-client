@@ -4,7 +4,7 @@ import { constantFromOrElse } from './constantFromOrElse'
 import { forkChain } from './forkChain'
 
 describe('constantFromOrElse', () => {
-	it('uses orElse when values is empty', () => {
+	it.skipIf(process.env.PROPERTY_BASED_TESTS === 'off')('uses orElse when values is empty', () => {
 		fc.assert(
 			fc.property(
 				forkChain(fc.anything(), (thing) => constantFromOrElse([], thing)),
@@ -14,7 +14,7 @@ describe('constantFromOrElse', () => {
 			)
 		)
 	})
-	it('values when they are non-empty', () => {
+	it.skipIf(process.env.PROPERTY_BASED_TESTS === 'off')('values when they are non-empty', () => {
 		fc.assert(
 			fc.property(
 				forkChain(

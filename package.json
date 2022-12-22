@@ -13,7 +13,7 @@
 		"check:format": "prettier --check .",
 		"check:types": "tsc --noEmit",
 		"ci": "run-s check lint build coverage",
-		"coverage": "vitest --coverage",
+		"coverage": "PROPERTY_BASED_TESTS=off vitest --coverage",
 		"format": "prettier --write .",
 		"lint": "eslint",
 		"test": "vitest",
