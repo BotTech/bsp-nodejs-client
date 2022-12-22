@@ -20,8 +20,8 @@ export function escapeUnescaped(s: string, specials: string[]): string {
 	for (const codePoint of s) {
 		if (escaped) {
 			if (escapeIsSpecial && codePoint !== Escape) {
-				// If the previous code point was an escape and escape is special then we need to insert an
-				// escape.
+				// If the previous code point was an escape and the current one is not an escape and escape is special then we
+				// have found an unescaped escape and need to insert another escape.
 				result += Escape
 			}
 			escaped = false

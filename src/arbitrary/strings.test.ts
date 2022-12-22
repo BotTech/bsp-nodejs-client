@@ -32,7 +32,7 @@ const constantEscapes = [
 	String.raw`\f`
 ]
 
-const unicodeBasicEscape: Arbitrary<string> = fc
+const unicodeShortEscape: Arbitrary<string> = fc
 	.hexaString({ minLength: 4, maxLength: 4 })
 	.map((s) => `\\u${s}`)
 
@@ -41,11 +41,11 @@ function fullUnicodeCodePoints(): Arbitrary<number> {
 }
 
 // TODO: Sometimes pad this out with 0.
-const unicodeFullEscape: Arbitrary<string> = fullUnicodeCodePoints().map(
+const unicodeLongEscape: Arbitrary<string> = fullUnicodeCodePoints().map(
 	(code: Number) => `\\u{${code.toString(16)}}`
 )
 
-const unicodeLatinEscape: Arbitrary<string> = fc
+const hexEscape: Arbitrary<string> = fc
 	.hexaString({ minLength: 2, maxLength: 2 })
 	.map((s) => `\\x{${s}}`)
 
@@ -53,17 +53,18 @@ const escapes: Arbitrary<string> = fc.stringOf(
 	fc.oneof(
 		{ withCrossShrink: true },
 		{ arbitrary: fc.constantFrom(...constantEscapes), weight: constantEscapes.length },
-		unicodeBasicEscape,
-		unicodeFullEscape,
-		unicodeLatinEscape
+		unicodeShortEscape,
+		unicodeLongEscape,
+		hexEscape
 	)
 )
 
-const UnicodeFullAndBasicEscapePrefix = /\\u/g
+const UnicodeEscapePrefix = /\\u/g
 // noinspection RegExpRedundantEscape
-const UnicodeFullAndBasicEscape = /\\u(([0-9A-Fa-f]{4})|(\{([0-9A-Fa-f]{1,6})\}))/g
-const UnicodeLatinEscapePrefix = /\\x/g
-const UnicodeLatinEscape = /\\x([0-9A-Fa-f]{2})/g
+const UnicodeEscape = /\\u(([0-9A-Fa-f]{4})|(\{([0-9A-Fa-f]{1,6})\}))/g
+
+const HexEscapePrefix = /\\x/g
+const HexEscape = /\\x([0-9A-Fa-f]{2})/g
 
 function countMatches(s: string, pattern: RegExp): number {
 	return (s.match(pattern) || []).length
@@ -71,9 +72,8 @@ function countMatches(s: string, pattern: RegExp): number {
 
 function validUnicodeEscapes(s: string): boolean {
 	return (
-		countMatches(s, UnicodeFullAndBasicEscapePrefix) ===
-			countMatches(s, UnicodeFullAndBasicEscape) &&
-		countMatches(s, UnicodeLatinEscapePrefix) === countMatches(s, UnicodeLatinEscape)
+		countMatches(s, UnicodeEscapePrefix) === countMatches(s, UnicodeEscape) &&
+		countMatches(s, HexEscapePrefix) === countMatches(s, HexEscape)
 	)
 }
 
@@ -193,6 +193,22 @@ describe('escapeUnescaped', () => {
 		const specials = ['\\']
 		const escaped = escapeUnescaped(original, specials)
 		expect(escaped).toBe('\\\\')
+		expectSpecialsToBeEscaped(escaped, specials)
+		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
+	})
+	it('unescaped quote is escaped', () => {
+		const original = "'"
+		const specials = ["'"]
+		const escaped = escapeUnescaped(original, specials)
+		expect(escaped).toBe("\\'")
+		expectSpecialsToBeEscaped(escaped, specials)
+		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
+	})
+	it('multiple unescaped quotes are escaped', () => {
+		const original = "\\\\'"
+		const specials = ["'"]
+		const escaped = escapeUnescaped(original, specials)
+		expect(escaped).toBe("\\\\\\'")
 		expectSpecialsToBeEscaped(escaped, specials)
 		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
 	})
@@ -349,6 +365,14 @@ describe('replaceEscapes', () => {
 		expect(replaced).toBe(original)
 		expectToBeOriginalReplaced(original, replaced)
 	})
+	it('escaped specials are replaced', () => {
+		Object.entries(SpecialSubstitutions).forEach(([special, substitution]) => {
+			const original = `\\${special}`
+			const replaced = replaceEscapes(original)
+			expect(replaced).toBe(substitution)
+			expectToBeOriginalReplaced(original, replaced)
+		})
+	})
 	it('unescaped escape is removed', () => {
 		const original = '\\'
 		const replaced = replaceEscapes(original)
@@ -367,35 +391,53 @@ describe('replaceEscapes', () => {
 		expect(replaced).toBe('a')
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	it('basic unicode escape is replaced', () => {
+	it('short unicode escape is replaced', () => {
 		const original = '\\u0000'
 		const replaced = replaceEscapes(original)
 		expect(replaced).toBe('\0')
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	it('unicode with basic unicode escape is replaced', () => {
+	it('unicode with short unicode escape is replaced', () => {
 		const original = '𐀀\\u0000'
 		const replaced = replaceEscapes(original)
 		expect(replaced).toBe('𐀀\0')
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	it('partial full unicode escape is replaced', () => {
+	it('invalid short unicode escape throws', () => {
+		const original = '\\u001'
+		expect(() => replaceEscapes(original)).toThrowError(
+			new SyntaxError('Invalid Unicode escape sequence')
+		)
+	})
+	it('partial long unicode escape is replaced', () => {
 		const original = '\\u{0}'
 		const replaced = replaceEscapes(original)
 		expect(replaced).toBe('\0')
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	it('full unicode escape is replaced', () => {
+	it('unicode long escape is replaced', () => {
 		const original = '\\u{000000}'
 		const replaced = replaceEscapes(original)
 		expect(replaced).toBe('\0')
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	it('basic latin unicode escape is replaced', () => {
+	it('invalid long unicode escape throws', () => {
+		const original = '\\u{1234567}'
+		expect(() => replaceEscapes(original)).toThrowError(
+			new SyntaxError('Invalid Unicode escape sequence')
+		)
+	})
+	it('hex escape is replaced', () => {
 		const original = '\\x00'
 		const replaced = replaceEscapes(original)
 		expect(replaced).toBe('\0')
 		expectToBeOriginalReplaced(original, replaced)
+	})
+	it('invalid hex escape throws', () => {
+		const original = '\\x1'
+		expect(() => replaceEscapes(original)).toThrowError(
+			new SyntaxError('Invalid hexadecimal escape sequence')
+		)
 	})
 	it('basic surrogate pair is replaced', () => {
 		const original = '\\ud83d\\udca9'
