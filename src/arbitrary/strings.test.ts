@@ -172,43 +172,40 @@ function expectToBeOriginalWithAddedEscapes(original: string, escaped: string, s
  * point.
  */
 describe('escapeUnescaped', () => {
-	it('unescaped escape is escaped', () => {
-		const original = '\\'
-		const specials = ['\\']
+	it.each([
+		{
+			name: 'unescaped escape is escaped',
+			original: '\\',
+			specials: ['\\'],
+			expected: '\\\\'
+		},
+		{
+			name: 'leading unescaped escape is escaped',
+			original: '\\a',
+			specials: ['\\'],
+			expected: '\\\\a'
+		},
+		{
+			name: 'escaped escape is not escaped again',
+			original: '\\\\',
+			specials: ['\\'],
+			expected: '\\\\'
+		},
+		{
+			name: 'unescaped quote is escaped',
+			original: "'",
+			specials: ["'"],
+			expected: "\\'"
+		},
+		{
+			name: 'multiple unescaped quotes are escaped',
+			original: "\\\\'",
+			specials: ["'"],
+			expected: "\\\\\\'"
+		}
+	])('$name', ({ original, specials, expected }) => {
 		const escaped = escapeUnescaped(original, specials)
-		expect(escaped).toBe('\\\\')
-		expectSpecialsToBeEscaped(escaped, specials)
-		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
-	})
-	it('leading unescaped escape is escaped', () => {
-		const original = '\\a'
-		const specials = ['\\']
-		const escaped = escapeUnescaped(original, specials)
-		expect(escaped).toBe('\\\\a')
-		expectSpecialsToBeEscaped(escaped, specials)
-		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
-	})
-	it('escaped escape is not escaped again', () => {
-		const original = '\\\\'
-		const specials = ['\\']
-		const escaped = escapeUnescaped(original, specials)
-		expect(escaped).toBe('\\\\')
-		expectSpecialsToBeEscaped(escaped, specials)
-		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
-	})
-	it('unescaped quote is escaped', () => {
-		const original = "'"
-		const specials = ["'"]
-		const escaped = escapeUnescaped(original, specials)
-		expect(escaped).toBe("\\'")
-		expectSpecialsToBeEscaped(escaped, specials)
-		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
-	})
-	it('multiple unescaped quotes are escaped', () => {
-		const original = "\\\\'"
-		const specials = ["'"]
-		const escaped = escapeUnescaped(original, specials)
-		expect(escaped).toBe("\\\\\\'")
+		expect(escaped).toBe(expected)
 		expectSpecialsToBeEscaped(escaped, specials)
 		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
 	})
@@ -359,109 +356,46 @@ function expectToBeOriginalReplaced(original: string, replaced: string) {
  * substitutions.
  */
 describe('replaceEscapes', () => {
-	it('empty is empty', () => {
-		const original = ''
+	it.each([
+		...Object.entries(SpecialSubstitutions).map(([special, expected]) => {
+			return { name: `escaped ${special} is replaced`, original: `\\${special}`, expected }
+		}),
+		{ name: 'empty is empty', original: '', expected: '' },
+		{ name: 'unescaped escape is removed', original: '\\', expected: '' },
+		{ name: 'escaped escape is replaced', original: '\\\\', expected: '\\' },
+		{ name: 'escaped non-escapable is unescaped', original: '\\a', expected: 'a' },
+		{ name: 'short unicode escape is replaced', original: '\\u0000', expected: '\u0000' },
+		{
+			name: 'unicode with short unicode escape is replaced',
+			original: '𐀀\\u0000',
+			expected: '𐀀\u0000'
+		},
+		{ name: 'partial long unicode escape is replaced', original: '\\u{0}', expected: '\u{0}' },
+		{ name: 'unicode long escape is replaced', original: '\\u{000000}', expected: '\u{000000}' },
+		{ name: 'hex escape is replaced', original: '\\u{000000}', expected: '\u{000000}' },
+		{ name: 'short surrogate pair is replaced', original: '\\ud83d\\udca9', expected: '💩' },
+		{ name: 'long surrogate pair is replaced', original: '\\u{d83d}\\u{dca9}', expected: '💩' },
+		{
+			name: 'isolated high surrogate is replaced',
+			original: '\\ud83d\\u{d8}',
+			expected: '\ud83d\u{d8}'
+		},
+		{
+			name: 'isolated low surrogate is replaced',
+			original: '\\u{d8}\\udca9',
+			expected: '\u{d8}\udca9'
+		}
+	])('$name', ({ original, expected }) => {
 		const replaced = replaceEscapes(original)
-		expect(replaced).toBe(original)
+		expect(replaced).toBe(expected)
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	it('escaped specials are replaced', () => {
-		Object.entries(SpecialSubstitutions).forEach(([special, substitution]) => {
-			const original = `\\${special}`
-			const replaced = replaceEscapes(original)
-			expect(replaced).toBe(substitution)
-			expectToBeOriginalReplaced(original, replaced)
-		})
-	})
-	it('unescaped escape is removed', () => {
-		const original = '\\'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('escaped escape is replaced', () => {
-		const original = '\\\\'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\\')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('escaped non-escapable is unescaped', () => {
-		const original = '\\a'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('a')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('short unicode escape is replaced', () => {
-		const original = '\\u0000'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\0')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('unicode with short unicode escape is replaced', () => {
-		const original = '𐀀\\u0000'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('𐀀\0')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('invalid short unicode escape throws', () => {
-		const original = '\\u001'
-		expect(() => replaceEscapes(original)).toThrowError(
-			new SyntaxError('Invalid Unicode escape sequence')
-		)
-	})
-	it('partial long unicode escape is replaced', () => {
-		const original = '\\u{0}'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\0')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('unicode long escape is replaced', () => {
-		const original = '\\u{000000}'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\0')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('invalid long unicode escape throws', () => {
-		const original = '\\u{1234567}'
-		expect(() => replaceEscapes(original)).toThrowError(
-			new SyntaxError('Invalid Unicode escape sequence')
-		)
-	})
-	it('hex escape is replaced', () => {
-		const original = '\\x00'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\0')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('invalid hex escape throws', () => {
-		const original = '\\x1'
-		expect(() => replaceEscapes(original)).toThrowError(
-			new SyntaxError('Invalid hexadecimal escape sequence')
-		)
-	})
-	it('basic surrogate pair is replaced', () => {
-		const original = '\\ud83d\\udca9'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('💩')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('full surrogate pair is replaced', () => {
-		const original = '\\u{d83d}\\u{dca9}'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('💩')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('isolated high surrogate is replaced', () => {
-		const original = '\\ud83d\\u{d8}'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\ud83d\u{d8}')
-		expectToBeOriginalReplaced(original, replaced)
-	})
-	it('isolated low surrogate is replaced', () => {
-		const original = '\\u{d8}\\udca9'
-		const replaced = replaceEscapes(original)
-		expect(replaced).toBe('\u{d8}\udca9')
-		expectToBeOriginalReplaced(original, replaced)
+	it.each([
+		{ name: 'short unicode', original: '\\u001', message: 'Invalid Unicode escape sequence' },
+		{ name: 'long unicode', original: '\\u{1234567}', message: 'Invalid Unicode escape sequence' },
+		{ name: 'hex', original: '\\x1', message: 'Invalid hexadecimal escape sequence' }
+	])('invalid $name escape throws SyntaxError', ({ original, message }) => {
+		expect(() => replaceEscapes(original)).toThrowError(new SyntaxError(message))
 	})
 	it('replaces every escape', () => {
 		fc.assert(
