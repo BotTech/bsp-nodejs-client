@@ -212,31 +212,31 @@ describe('escapeUnescaped', () => {
 		expectSpecialsToBeEscaped(escaped, specials)
 		expectToBeOriginalWithAddedEscapes(original, escaped, specials)
 	})
-	// it('every code point is escaped', () => {
-	// 	fc.assert(
-	// 		fc.property(stringWithSpecials, ([s, specials]) => {
-	// 			const escaped = escapeUnescaped(s, specials)
-	// 			expectSpecialsToBeEscaped(escaped, specials)
-	// 		})
-	// 	)
-	// })
-	// it('only adds escape characters before specials', () => {
-	// 	fc.assert(
-	// 		fc.property(stringWithSpecials, ([original, specials]) => {
-	// 			const escaped = escapeUnescaped(original, specials)
-	// 			expectToBeOriginalWithAddedEscapes(original, escaped, specials)
-	// 		})
-	// 	)
-	// })
-	// it('escaping something once is the same as twice', () => {
-	// 	fc.assert(
-	// 		fc.property(stringWithSpecials, ([original, specials]) => {
-	// 			const once = escapeUnescaped(original, specials)
-	// 			const twice = escapeUnescaped(once, specials)
-	// 			return once === twice
-	// 		})
-	// 	)
-	// })
+	it('every code point is escaped', () => {
+		fc.assert(
+			fc.property(stringWithSpecials, ([s, specials]) => {
+				const escaped = escapeUnescaped(s, specials)
+				expectSpecialsToBeEscaped(escaped, specials)
+			})
+		)
+	})
+	it('only adds escape characters before specials', () => {
+		fc.assert(
+			fc.property(stringWithSpecials, ([original, specials]) => {
+				const escaped = escapeUnescaped(original, specials)
+				expectToBeOriginalWithAddedEscapes(original, escaped, specials)
+			})
+		)
+	})
+	it('escaping something once is the same as twice', () => {
+		fc.assert(
+			fc.property(stringWithSpecials, ([original, specials]) => {
+				const once = escapeUnescaped(original, specials)
+				const twice = escapeUnescaped(once, specials)
+				return once === twice
+			})
+		)
+	})
 })
 
 // TODO: Can we get away without duplicating this?
@@ -463,13 +463,12 @@ describe('replaceEscapes', () => {
 		expect(replaced).toBe('\u{d8}\udca9')
 		expectToBeOriginalReplaced(original, replaced)
 	})
-	// it('replaces every escape', () => {
-	// 	fc.assert(
-	// 		// TODO: Test invalid escape sequences.
-	// 		fc.property(escapedString, (original) => {
-	// 			const replaced = replaceEscapes(original)
-	// 			expectToBeOriginalReplaced(original, replaced)
-	// 		})
-	// 	)
-	// })
+	it('replaces every escape', () => {
+		fc.assert(
+			fc.property(escapedString, (original) => {
+				const replaced = replaceEscapes(original)
+				expectToBeOriginalReplaced(original, replaced)
+			})
+		)
+	})
 })
